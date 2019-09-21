@@ -59,3 +59,42 @@ Lorsqu'une requête HTTP arrive à destination d'une application avec zéro pod,
 [+] Knative permet de rendre une application disponible et scalable à partir de zéro pod par déploiement (en cas d'inactivité), ce qui permet plus d'**économies de ressources** que K8s qui nécessite qu'au moins un pod par déploiement existe.
 
 [-] Cependant pour que le scale-up soit le plus transparent possible, **le développeur doit s'assurer que l'application démarre le plus rapidement possible**. Car pendant que l'application démarre, les requêtes qui lui parviennent sont mises en attente.
+
+
+## Monitoring
+
+Knative apporte des facilités d'installation de composants de monitoring. D'autre part, aucune configuration additionnelle n'est normalement requise au niveau des applications pour faire remonter les données de monitoring aux composants de Knative.
+
+### Métriques
+
+Le composant Serving de Kubernetes embarque par défaut une installation de Prometheus et Grafana. Ce dernier embarque un certain nombre de tableaux de bord préinstallés :
+
+* Revision HTTP Requests : compteur (+ latence + taille) des requêtes HTTP par Revision. Une Revision étant une "version" de Configuration, tout comme les ReplicaSets sont des versions de Deployment dans K8s
+* Nodes : métriques système et réseau de niveau Node
+* Pods : métriques système et réseau de niveau Pod
+* Deployment : métriques système et réseau de niveau Deployment
+* Istio, Mixer and Pilot : métriques de ces composants utilisés en interne par Knative
+* Kubernetes : métriques de niveau cluster K8s
+
+### Logs
+
+Serving propose 3 systèmes de logs au choix :
+
+* Elasticsearch + Kibana embarqué
+* Stackdriver dans GCP
+* Autre système de logs personnalisé
+
+Les catégories de logs proposées sont :
+
+* Les sorties standard (`stdout`, `stderr`) des applications
+* Les requêtes HTTP reçues par les applications
+* Les changements de Configuration (et Revision) de déploiements Knative
+
+### Traces
+
+Knative propose d'embarquer 2 outils de traces au choix :
+
+* Zipkin
+* Jaeger
+
+Quel que soit le choix, Knative s'assure de la collecte des traces depuis les applications vers l'outil de tracing, ce qui évite d'avoir aux devs et aux ops de s'en préoccuper.
