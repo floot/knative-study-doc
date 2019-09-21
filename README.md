@@ -17,14 +17,18 @@ Pour y parvenir, Knative s'installe comme un ensemble de plugins pour Kubernetes
 
 Serving étant l'élément central de Knative, tandis que Eventing être utilisés optionnellement.
 
-Jusqu'en version 0.7, Knative embarquait également un plugin Build dédié aux builds d'images. Cependant celui-ci a été abandonné au profit d'un projet tiers : [Tekton Pipelines](https://github.com/tektoncd/pipeline)
+Jusqu'en version 0.7, Knative embarquait également un plugin Build dédié aux builds d'images. Cependant celui-ci a été abandonné au profit d'un projet tiers : [Tekton Pipelines](https://github.com/tektoncd/pipeline).
+
+La première version de Knative remonte à juillet 2018, ce qui en fait un projet encore très jeune. En effet, alors que la version 0.9 a été publié courant septembre 2019, toutes les versions sont marquées par l'équipe du projet comme des pre-releases. Cependant au rythme où vont les versions, le projet semble proche d'une première version stable d'ici la fin de l'année 2019.
+
+En tant que principal contributeur, Google commercialise déjà un produit basé sur Knative : [Cloud Run](https://cloud.google.com/run/). Mais pour les raisons évoquées ci-dessus, Cloud Run est toujours marqué comme "beta" au 4e trimestre 2019.
 
 ## Déploiement
 
 Comme Knative n'est qu'une surcouche à Kubernetes, **l'unité de base reste le Pod**.
 Ce n'est donc pas un système de FaaS (function as a service) tel que AWS Lambda, car il reste toujours au développeur à gérer la création d'un `Dockerfile` qui va spécifier finement dans quel environnement son code va fonctionner.
 
-Ce fonctionnement est donc plus adapté à des applications de petite taille telles que des microservices, avec potentiellement des environnements d'exécution hétérogènes pour chacune d'entre elles.
+Ce fonctionnement est donc plus adapté à des applications de petite taille telles que des microservices, avec potentiellement des environnements d'exécution hétérogènes pour chacune d'entre elles. À noter que **les applications fonctionnant avec Knative doivent être Stateless**.
 
 En revanche, **la spécification du déploiement est facilitée** par rapport à K8s grâce à des ressources spécifiques à Knative.
 Au plus court, un développeur peut par exemple spécifier en YAML dans une seule ressource Knative de type "Service" le déploiement équivalent à : 1 Deployment + 1 Service + 1 Ingress de Kubernetes.
@@ -58,6 +62,68 @@ Ce qui fait de Knative une solution "Serverless" est qu'en cas d'inactivité apr
 Dans un environnement de cloud public facturé à la consommation de ressources, cela permet alors de générer des économies en ne laissant pas tourner des pods "dans le vide".
 
 Lorsqu'une requête HTTP arrive à destination d'une application avec zéro pod, Knative la met en attente et déclenche la création d'un pod pour la traiter.
+
+### Aperçu technique pour les développeurs
+
+Le principal (voire unique) type de ressource Knative qu'un développeur doit connaître est Service, dont voici un exemple :
+
+```yaml
+apiVersion: serving.knative.dev/v1beta1
+kind: Service
+metadata:
+  # Nom du service
+  name: my-knative-service
+  # Namespace auquel le service doit appartenir
+  namespace: my-project
+
+spec:
+
+  # Partie "Configuration" du Service
+  template:
+    metadata:
+      name: my-deployment-rev1
+      annotations:
+        # Fixe le nombre de requêtes HTTP simultanées pour l'autoscaling à 100
+        autoscaling.knative.dev/target: "100"
+    spec:
+      # Définition des conteneurs fournissant le Service
+      containers:
+      - image: gcr.io/knative-samples/autoscale-go:0.1
+
+  # Partie "Route" du Service
+  traffic:
+  - tag: current
+    revisionName: my-deployment-rev1
+    percent: 100
+  - tag: latest
+    latestRevision: true
+    percent: 0
+```
+
+La partie `template` indique à Knative de générer une ressource Revision nommée `my-deployment-rev1` afin de déployer le conteneur.
+
+D'autre part, la partie `traffic` provoque la génération d'une ressource Knative Route dirigeant 100% du trafic de requêtes vers l'application définie dans la Revision `my-deployment-rev1`.
+
+Dans cet exemple, si seule la partie `template` est modifiée et qu'elle porte un nouveau nom de Revision, alors 100% du trafic restera malgré cela affecté à la Revision initiale nommée `my-deployment-rev1`, comme définit dans la section `traffic`.
+
+C'est avec ce mécanisme d'allocation de trafic qu'il est possible de procéder à de la répartition différentiée (blue/green) :
+
+```yaml
+  traffic:
+  - tag: current
+    revisionName: my-deployment-rev1
+    percent: 80
+  - tag: candidate
+    revisionName: my-deployment-rev2
+    percent: 20
+  - tag: latest
+    latestRevision: true
+    percent: 0
+```
+
+Cet exemple de définition de Route dirige 80% du trafic à `my-deployment-rev1` et seulement 20% à `my-deployment-rev2` qui peut correspondre à une nouvelle version de l'application en déploiement progressif.
+
+Note : l'URL d'accès à l'application s'obtient en consultant la clé `.status.url` de la ressource Knative Service. Le nom de domaine est normalement composé du nom du Service, du nom du Namespace, et du suffixe de domaine (ex : `my-knative-service.my-project.example.com`).
 
 ### Avantages / Inconvénients
 
@@ -103,3 +169,15 @@ Knative propose d'embarquer 2 outils de traces au choix :
 * Jaeger
 
 Quel que soit le choix, Knative s'assure de la collecte des traces depuis les applications vers l'outil de tracing, ce qui évite d'avoir aux devs et aux ops de s'en préoccuper.
+
+## Conclusion
+
+Knative étend Kubernetes en lui apportant une solution pour le déploiement d'applications web conteneurisées Serverless et scalables. De plus, ses ressources de configuration spécifiques évitent aux développeurs de rentrer trop dans les détails des objets standards de Kubernetes, ce qui permet une meilleure maintenabilité et plus de clarté. 
+
+Son fonctionnement basé sur les conteneurs le rend suffisamment générique et flexible pour couvrir le plus de cas d'utilisation "Serverless" possible. Seulement, les développeurs doivent veiller à ce que le temps de "warm-up" des conteneurs reste le plus réduit possible.
+
+En plus de ces apports centrés sur le déploiement, Knative vient avec des solutions préparamétrées pour les métriques, les logs et les traces, toutes basées sur des logiciels éprouvés dans ces domaines (Prometheus, Grafana, Elasticsearch, Kibana...).
+
+En revanche, Knative ne propose plus d'aide au "build" d'images Docker pour rester centré sur le déploiement (Serving) et la gestion d'événements (Eventing).
+
+Le projet est encore jeune mais en cours de stabilisation, porté notamment par Google qui propose déjà une offre commerciale basée dessus.
