@@ -9,10 +9,11 @@ L'objectif de Knative est d'utiliser les conteneurs et leur orchestration de Kub
 Pour y parvenir, Knative s'installe comme un ensemble de plugins pour Kubernetes :
 
 * **Serving** : gère les déploiements sur K8s avec des objets d'API dédiés
-* **Build** : apporte des facilités de build d'images de conteneurs à K8s
 * **Eventing** : offre un système d'événements pour les communications inter-conteneur
 
-Serving étant l'élément central de Knative, tandis que les deux autres peuvent être utilisés optionnellement.
+Serving étant l'élément central de Knative, tandis que Eventing être utilisés optionnellement.
+
+Jusqu'en version 0.7, Knative embarquait également un plugin Build dédié aux builds d'images. Cependant celui-ci a été abandonné au profit d'un projet tiers : [Tekton Pipelines](https://github.com/tektoncd/pipeline)
 
 ## Déploiement
 
