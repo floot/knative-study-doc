@@ -65,7 +65,9 @@ Lorsqu'une requête HTTP arrive à destination d'une application avec zéro pod,
 
 ### Aperçu technique pour les développeurs
 
-Le principal (voire unique) type de ressource Knative qu'un développeur doit connaître est Service, dont voici un exemple :
+Pour être déployée avec Knative, **une application doit avoir ses images de conteneurs construites puis stockées dans un registre accessible par le cluster Kubernetes**. Pour rappel, le "build" des images n'entre pas dans le périmètre de Knative.
+
+À partir de là, le principal (voire unique) type de ressource Knative qu'un développeur doit connaître est Service, dont voici un exemple :
 
 ```yaml
 apiVersion: serving.knative.dev/v1beta1
