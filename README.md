@@ -5,6 +5,10 @@
 L'objectif de Knative est d'utiliser les conteneurs et leur orchestration de Kubernetes pour répondre à des besoins principaux de :
 - Autoscaling
 - Minimisation de la consommation de ressources
+- Routage de requêtes
+- Gestionnaire d'événements
+
+Le tout en y repondant de la manière la plus simple possible pour les développeurs.
 
 Pour y parvenir, Knative s'installe comme un ensemble de plugins pour Kubernetes :
 
